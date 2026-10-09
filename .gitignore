@@ -1,0 +1,78 @@
+# Python bytecode and extensions
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Python packaging and build output
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Test and coverage output
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+nosetests.xml
+pytestdebug.log
+*.cover
+*.py,cover
+.pytest_cache/
+.hypothesis/
+
+# Virtual environments
+.env
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Type checking and lint caches
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.ruff_cache/
+.pylint.d/
+.pyright/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Editor and IDE files
+.idea/
+.vscode/
+.spyderproject
+.spyproject
+.ropeproject
+
+# Local Python configuration and logs
+.python-version
+pip-log.txt
+pip-delete-this-directory.txt
+*.log
+
+# Requested project-wide asset exclusions
+*.png
