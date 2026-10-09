@@ -32,8 +32,8 @@ classifier_page = ui.div(
         ui.div(
             ui.h1("Organ-system classifier"),
             ui.p(
-                "Classify a standardized diagnosis description into one of six "
-                "ICD-10-CM chapter-based organ-system categories."
+                "Classify a standardized diagnosis description into one of eight "
+                "ICD-10-CM chapter-based categories."
             ),
             class_="intro",
         ),
@@ -68,7 +68,7 @@ model_details_page = ui.div(
             ui.h1("How the classifier works"),
             ui.p(
                 "This TensorFlow text-classification project maps standardized "
-                "ICD-10-CM diagnosis descriptions to one of six broad organ-system labels."
+                "ICD-10-CM diagnosis descriptions to one of eight chapter-based categories."
             ),
             class_="intro",
         ),
@@ -83,6 +83,8 @@ model_details_page = ui.div(
             ui.div(
                 ui.div("Chapter", class_="mapping-heading"),
                 ui.div("Organ-system label", class_="mapping-heading"),
+                ui.div("D", class_="mapping-code"), ui.div("Blood, blood-forming, and immune disorders", class_="mapping-label"),
+                ui.div("E", class_="mapping-code"), ui.div("Endocrine, nutritional, and metabolic diseases", class_="mapping-label"),
                 ui.div("G", class_="mapping-code"), ui.div("Nervous system", class_="mapping-label"),
                 ui.div("I", class_="mapping-code"), ui.div("Cardiovascular system", class_="mapping-label"),
                 ui.div("J", class_="mapping-code"), ui.div("Respiratory system", class_="mapping-label"),
@@ -92,9 +94,10 @@ model_details_page = ui.div(
                 class_="mapping-grid",
             ),
             ui.p(
-                "The current training sample uses up to 350 descriptions per category "
-                "(2,100 total), followed by a stratified 80/20 split: 1,680 training "
-                "and 420 held-out test examples.",
+                "Training uses all retrieved descriptions from the eight selected chapters, "
+                "plus curated common names and abbreviations added only to the training "
+                "split. The official descriptions use a stratified 80/20 train/test split, "
+                "and inverse-frequency class weights reduce the effect of uneven chapter sizes.",
                 class_="detail-note",
             ),
             class_="detail-section",
@@ -106,7 +109,7 @@ model_details_page = ui.div(
                 ui.tags.li("TextVectorization creates integer token sequences (up to 8,000 tokens and 40 positions)."),
                 ui.tags.li("Embedding learns 64-dimensional representations for tokens."),
                 ui.tags.li("GlobalAveragePooling1D combines token vectors into a description representation."),
-                ui.tags.li("Dense (64 units, ReLU), Dropout (0.25), and Dense (6 units, softmax) produce class probabilities."),
+                ui.tags.li("Dense (64 units, ReLU), Dropout (0.25), and Dense (8 units, softmax) produce class probabilities."),
                 class_="architecture-list",
             ),
             class_="detail-section",

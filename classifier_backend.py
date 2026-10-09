@@ -1,4 +1,5 @@
 import json
+import re
 from functools import lru_cache
 from pathlib import Path
 
@@ -16,8 +17,12 @@ ARTIFACT_DIR = Path(__file__).parent / "artifacts"
 MODEL_PATH = ARTIFACT_DIR / "condition_organ_system.keras"
 LABELS_PATH = ARTIFACT_DIR / "condition_organ_system_labels.json"
 METRICS_PATH = ARTIFACT_DIR / "condition_organ_system_metrics.json"
+MODEL_REVISION_PATH = ARTIFACT_DIR / "condition_organ_system_revision.json"
+MODEL_REVISION = 3
 
 SYSTEM_CHAPTERS = {
+    "D": "Blood, blood-forming, and immune disorders",
+    "E": "Endocrine, nutritional, and metabolic diseases",
     "G": "Nervous system",
     "I": "Cardiovascular system",
     "J": "Respiratory system",
@@ -27,10 +32,147 @@ SYSTEM_CHAPTERS = {
 }
 PAGE_SIZE = 500
 MAX_RESULTS_PER_QUERY = 7500
-MAX_EXAMPLES_PER_CLASS = 350
 MAX_TOKENS = 8000
 SEQUENCE_LENGTH = 40
 SEED = 42
+TRAINING_ALIASES = {
+    "Nervous system": [
+        "ALS",
+        "amyotrophic lateral sclerosis",
+        "Alzheimer's disease",
+        "Parkinson's disease",
+        "epilepsy",
+        "seizure disorder",
+        "multiple sclerosis",
+        "migraine",
+        "Guillain-Barre syndrome",
+        "peripheral neuropathy",
+        "polyneuropathy",
+        "Huntington's disease",
+        "essential tremor",
+    ],
+    "Cardiovascular system": [
+        "AFib",
+        "atrial fibrillation",
+        "CAD",
+        "coronary artery disease",
+        "CHF",
+        "congestive heart failure",
+        "heart failure",
+        "heart attack",
+        "myocardial infarction",
+        "high blood pressure",
+        "hypertension",
+        "DVT",
+        "deep vein thrombosis",
+        "angina",
+        "peripheral artery disease",
+    ],
+    "Blood, blood-forming, and immune disorders": [
+        "anemia",
+        "iron deficiency anemia",
+        "sickle cell disease",
+        "thalassemia",
+        "aplastic anemia",
+        "hemophilia",
+        "von Willebrand disease",
+        "thrombocytopenia",
+        "immune thrombocytopenia",
+        "neutropenia",
+        "coagulopathy",
+        "clotting disorder",
+    ],
+    "Endocrine, nutritional, and metabolic diseases": [
+        "diabetes",
+        "diabetes mellitus",
+        "type 1 diabetes",
+        "type 2 diabetes",
+        "hypothyroidism",
+        "hyperthyroidism",
+        "Hashimoto's thyroiditis",
+        "Graves' disease",
+        "obesity",
+        "metabolic syndrome",
+        "hyperlipidemia",
+        "malnutrition",
+        "Cushing syndrome",
+        "Addison disease",
+        "polycystic ovary syndrome",
+    ],
+    "Respiratory system": [
+        "COPD",
+        "chronic obstructive pulmonary disease",
+        "asthma",
+        "pneumonia",
+        "bronchitis",
+        "emphysema",
+        "interstitial lung disease",
+        "pulmonary fibrosis",
+        "bronchiectasis",
+        "pleural effusion",
+    ],
+    "Digestive system": [
+        "IBD",
+        "inflammatory bowel disease",
+        "Crohn's disease",
+        "Crohn disease",
+        "ulcerative colitis",
+        "IBS",
+        "irritable bowel syndrome",
+        "GERD",
+        "gastroesophageal reflux disease",
+        "acid reflux",
+        "celiac disease",
+        "diverticulitis",
+        "pancreatitis",
+        "gallstones",
+    ],
+    "Musculoskeletal system": [
+        "RA",
+        "rheumatoid arthritis",
+        "OA",
+        "osteoarthritis",
+        "gout",
+        "osteoporosis",
+        "fibromyalgia",
+        "lupus",
+        "systemic lupus erythematosus",
+        "ankylosing spondylitis",
+        "scoliosis",
+    ],
+    "Genitourinary system": [
+        "CKD",
+        "chronic kidney disease",
+        "UTI",
+        "urinary tract infection",
+        "kidney stones",
+        "nephrolithiasis",
+        "cystitis",
+        "bladder infection",
+        "endometriosis",
+        "benign prostatic hyperplasia",
+        "BPH",
+        "ovarian cyst",
+        "urinary incontinence",
+        "kidney failure",
+    ],
+}
+ABBREVIATION_EXPANSIONS = {
+    "ALS": "amyotrophic lateral sclerosis",
+    "AFib": "atrial fibrillation",
+    "CAD": "coronary artery disease",
+    "CHF": "congestive heart failure",
+    "DVT": "deep vein thrombosis",
+    "COPD": "chronic obstructive pulmonary disease",
+    "IBD": "inflammatory bowel disease",
+    "IBS": "irritable bowel syndrome",
+    "GERD": "gastroesophageal reflux disease",
+    "RA": "rheumatoid arthritis",
+    "OA": "osteoarthritis",
+    "CKD": "chronic kidney disease",
+    "UTI": "urinary tract infection",
+    "BPH": "benign prostatic hyperplasia",
+}
 
 
 def _fetch_chapter(chapter: str) -> tuple[list[dict[str, str]], int]:
@@ -83,20 +225,10 @@ def _fetch_training_data() -> pd.DataFrame:
     conditions["description"] = conditions["description"].str.strip()
     conditions = conditions[conditions["description"].ne("")]
 
-    balanced_parts = []
-    for _, group in conditions.groupby("organ_system"):
-        sample_size = min(MAX_EXAMPLES_PER_CLASS, len(group))
-        if sample_size:
-            balanced_parts.append(group.sample(n=sample_size, random_state=SEED))
-
-    if len(balanced_parts) != len(SYSTEM_CHAPTERS):
+    if set(conditions["organ_system"].unique()) != set(SYSTEM_CHAPTERS.values()):
         raise RuntimeError("The API did not return examples for every configured organ system.")
 
-    return (
-        pd.concat(balanced_parts, ignore_index=True)
-        .sample(frac=1, random_state=SEED)
-        .reset_index(drop=True)
-    )
+    return conditions.sample(frac=1, random_state=SEED).reset_index(drop=True)
 
 
 def _train_and_save_model() -> tuple[tf.keras.Model, list[str]]:
@@ -110,9 +242,32 @@ def _train_and_save_model() -> tuple[tf.keras.Model, list[str]]:
         stratify=conditions["organ_system"],
     )
 
+    aliases = pd.DataFrame(
+        [
+            {"description": alias, "organ_system": system_name}
+            for system_name, alias_list in TRAINING_ALIASES.items()
+            for alias in alias_list
+        ]
+    )
+    training_examples = pd.concat(
+        [
+            pd.DataFrame({"description": X_train, "organ_system": y_train_text}),
+            aliases,
+        ],
+        ignore_index=True,
+    ).sample(frac=1, random_state=SEED).reset_index(drop=True)
+
+    X_train = training_examples["description"]
+    y_train_text = training_examples["organ_system"]
     label_encoder = LabelEncoder().fit(y_train_text)
+    class_names = label_encoder.classes_.tolist()
     y_train = label_encoder.transform(y_train_text)
     train_text = tf.constant(X_train.tolist(), dtype=tf.string)
+    class_counts = np.bincount(y_train, minlength=len(class_names))
+    class_weights = {
+        index: len(y_train) / (len(class_names) * count)
+        for index, count in enumerate(class_counts)
+    }
 
     vectorizer = tf.keras.layers.TextVectorization(
         max_tokens=MAX_TOKENS,
@@ -149,10 +304,10 @@ def _train_and_save_model() -> tuple[tf.keras.Model, list[str]]:
         epochs=15,
         batch_size=32,
         callbacks=[early_stopping],
+        class_weight=class_weights,
         verbose=1,
     )
 
-    class_names = label_encoder.classes_.tolist()
     metrics = _evaluate_model(model, X_test, y_test_text, class_names)
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
     model.save(MODEL_PATH)
@@ -160,6 +315,8 @@ def _train_and_save_model() -> tuple[tf.keras.Model, list[str]]:
         json.dump(class_names, labels_file, indent=2)
     with METRICS_PATH.open("w", encoding="utf-8") as metrics_file:
         json.dump(metrics, metrics_file, indent=2)
+    with MODEL_REVISION_PATH.open("w", encoding="utf-8") as revision_file:
+        json.dump({"revision": MODEL_REVISION}, revision_file, indent=2)
     return model, class_names, metrics
 
 
@@ -192,7 +349,12 @@ def _evaluate_model(
 
 @lru_cache(maxsize=1)
 def _load_classifier() -> tuple[tf.keras.Model, list[str], dict[str, float]]:
-    if MODEL_PATH.exists() and LABELS_PATH.exists():
+    if MODEL_PATH.exists() and LABELS_PATH.exists() and MODEL_REVISION_PATH.exists():
+        with MODEL_REVISION_PATH.open(encoding="utf-8") as revision_file:
+            revision = json.load(revision_file).get("revision")
+        if revision != MODEL_REVISION:
+            return _train_and_save_model()
+
         model = tf.keras.models.load_model(MODEL_PATH, compile=False)
         with LABELS_PATH.open(encoding="utf-8") as labels_file:
             class_names = json.load(labels_file)
@@ -219,8 +381,16 @@ def _load_classifier() -> tuple[tf.keras.Model, list[str], dict[str, float]]:
 def classify_condition(description: str) -> dict[str, str | float]:
     """Return the predicted organ system and its model confidence."""
     model, class_names, metrics = _load_classifier()
+    normalized_description = description
+    for abbreviation, expansion in ABBREVIATION_EXPANSIONS.items():
+        normalized_description = re.sub(
+            rf"\b{re.escape(abbreviation)}\b",
+            expansion,
+            normalized_description,
+            flags=re.IGNORECASE,
+        )
     probabilities = model.predict(
-        tf.constant([description], dtype=tf.string),
+        tf.constant([normalized_description], dtype=tf.string),
         verbose=0,
     )[0]
     best_index = int(np.argmax(probabilities))
