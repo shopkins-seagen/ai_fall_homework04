@@ -1,0 +1,7 @@
+htmltools
+numpy
+pandas
+requests
+scikit-learn
+shiny
+tensorflow
