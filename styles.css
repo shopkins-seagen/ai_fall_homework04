@@ -91,6 +91,20 @@ body {
   padding: 42px 0 30px;
 }
 
+.classifier-shell {
+  width: min(100% - 40px, 1120px);
+  max-width: 1120px;
+}
+
+.classifier-columns > div {
+  min-width: 0;
+}
+
+.classifier-columns {
+  --bs-gutter-x: 2.5rem;
+  --bs-gutter-y: 1.5rem;
+}
+
 .topline {
   display: flex;
   align-items: center;
@@ -141,9 +155,14 @@ h1 {
 }
 
 .query-area {
-  padding: 24px 0 28px;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.query-area input.form-control {
+  min-height: 46px;
 }
 
 .form-label {
@@ -200,7 +219,7 @@ h1 {
 
 .result-wrap {
   min-height: 184px;
-  padding: 26px 0;
+  padding: 0;
 }
 
 .result-card {
@@ -395,6 +414,7 @@ h1 {
   .navbar-brand { width: calc(100% - 48px); max-width: none; margin-right: 0; white-space: normal; }
   .navbar-title-row { flex-wrap: wrap; gap: 4px 10px; }
   .mapping-grid { grid-template-columns: 84px minmax(0, 1fr); }
+  .classifier-columns { --bs-gutter-x: 1.5rem; }
 }
 
 @media (min-width: 768px) {

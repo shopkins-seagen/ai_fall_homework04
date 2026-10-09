@@ -30,30 +30,40 @@ def metric_grid(metrics):
 classifier_page = ui.div(
     ui.div(
         ui.div(
-            ui.h1("Organ-system classifier"),
+            ui.h1("Organ-System Classifier"),
             ui.p(
-                "Classify a standardized diagnosis description into one of eight "
+                "Classify a diagnosis description into one of eight "
                 "ICD-10-CM chapter-based categories."
             ),
             class_="intro",
         ),
         ui.div(
-            ui.input_text_area(
-                "condition_text",
-                "Diagnosis description",
-                placeholder="Example: Asthma, unspecified, uncomplicated",
-                rows=3,
-                width="100%",
+            ui.div(
+                ui.div(
+                    ui.input_text(
+                        "condition_text",
+                        "Diagnosis description",
+                        width="100%",
+                    ),
+                    ui.input_action_button(
+                        "classify",
+                        "Classify description",
+                        class_="classify-button",
+                    ),
+                    class_="query-area",
+                ),
+                class_="col-12 col-md-5",
             ),
-            ui.input_action_button(
-                "classify",
-                "Classify description",
-                class_="classify-button",
+            ui.div(
+                ui.div(
+                    ui.output_ui("prediction_result"),
+                    class_="result-wrap",
+                ),
+                class_="col-12 col-md-5",
             ),
-            class_="query-area",
+            class_="row g-4 justify-content-center align-items-start classifier-columns",
         ),
-        ui.div(ui.output_ui("prediction_result"), class_="result-wrap"),
-        class_="app-shell",
+        class_="app-shell classifier-shell",
     )
 )
 
@@ -155,7 +165,7 @@ app_ui = ui.page_navbar(
     ),
     ui.nav_panel(
         ui.span(
-            ui.tags.i(class_="fa-solid fa-house nav-icon", aria_hidden="true"),
+            ui.tags.i(class_="fa-solid fa-stethoscope nav-icon", aria_hidden="true"),
             ui.span("Classifier"),
             class_="nav-item-label",
         ),
@@ -233,7 +243,6 @@ def server(input, output, session):
         current_result = result.get()
         if current_result is None:
             return ui.div(
-                "Your classification will appear here.",
                 class_="empty-state",
             )
 
