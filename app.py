@@ -183,7 +183,7 @@ app_ui = ui.page_navbar(
         )
     ),
     title=ui.span(
-        ui.span("Homework 4: TensorFlow Text Classifier", class_="navbar-title-text"),
+        ui.span("BIA 562 Homework 4: TensorFlow Text Classifier", class_="navbar-title-text"),
         ui.span("Shawn Hopkins", class_="navbar-title-author"),
         class_="navbar-title-row",
     ),
