@@ -175,7 +175,7 @@ app_ui = ui.page_navbar(
                 ui.span("Source Code"),
                 class_="nav-item-label",
             ),
-            href="https://github.com",
+            href="https://github.com/shopkins-seagen/ai_fall_homework04",
             target="_blank",
             rel="noopener noreferrer",
             class_="nav-link external-nav-link",
